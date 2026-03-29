@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Spares & Consumables | SBM Offshore</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- ══════════════════════════════════════════════════════
+     PASSO 1: SUBSTITUA O BLOCO ABAIXO PELO SEU firebaseConfig
+     Copie do Firebase Console → Project Settings → Your apps
+     ══════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ▼▼▼ SUBSTITUA ESTE BLOCO PELO SEU firebaseConfig ▼▼▼
+  const firebaseConfig = {
+    apiKey: "COLE_AQUI",
+    authDomain: "COLE_AQUI",
+    databaseURL: "COLE_AQUI",
+    projectId: "COLE_AQUI",
+    storageBucket: "COLE_AQUI",
+    messagingSenderId: "COLE_AQUI",
+    appId: "COLE_AQUI"
+  };
+  // ▲▲▲ FIM DO BLOCO ▲▲▲
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Listener: atualiza resultados em tempo real para TODOS
+  function listenVotes() {
+    onValue(ref(db, 'votes'), snap => {
+      const data = snap.val() || {};
+      window._fbVotes = data;
+      if (typeof window._onVotesUpdate === 'function') window._onVotesUpdate(data);
+    });
+  }
+
+  // Cast vote
+  window.fbVote = async function(rcId, userId) {
+    await set(ref(db, `votes/${userId}/${rcId}`), true);
+  };
+
+  // Remove vote
+  window.fbUnvote = async function(rcId, userId) {
+    await remove(ref(db, `votes/${userId}/${rcId}`));
+  };
+
+  // Reset ALL votes (facilitador)
+  window.fbReset = async function() {
+    await remove(ref(db, 'votes'));
+  };
+
+  // Get votes of user
+  window.fbGetMyVotes = function(userId) {
+    return window._fbVotes?.[userId] || {};
+  };
+
+  listenVotes();
+  window._fbReady = true;
+  document.dispatchEvent(new Event('fbReady'));
+</script>
+
+<style>
+:root {
+  --navy:#0D2356; --navy2:#162E6B; --orange:#F47920; --orange-lt:#F9A05C;
+  --orange-dim:rgba(244,121,32,0.15); --gray:#8A9BB0; --gray-lt:rgba(255,255,255,0.07);
+  --red:#D93535; --border:rgba(255,255,255,0.09); --green:#27AE60;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-serif;background:var(--navy);color:#fff}
+
+/* ── LOGO BAR ── */
+#logo-bar{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(10,28,68,0.97);border-bottom:3px solid var(--orange);display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:300}
+.logo-title{font-size:13px;font-weight:700}.logo-title span{color:var(--orange)}
+.logo-meta{font-size:11px;color:var(--gray)}
+
+/* ── TIMER ── */
+#timer-bar{position:fixed;top:48px;left:0;right:0;height:36px;background:rgba(10,28,68,0.95);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:290;font-size:12px}
+.t-section{color:var(--orange);font-weight:600}
+.t-total{font-variant-numeric:tabular-nums;color:var(--gray)}
+.t-total.urgent{color:var(--red);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.t-pulse{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+/* ── USER ID MODAL ── */
+#id-modal{position:fixed;inset:0;background:rgba(5,15,40,0.92);display:flex;align-items:center;justify-content:center;z-index:500}
+#id-modal.hidden{display:none}
+.modal-box{background:#162E6B;border:1px solid rgba(244,121,32,0.3);border-radius:16px;padding:36px 40px;max-width:420px;width:90%;text-align:center}
+.modal-box h2{font-size:22px;font-weight:800;margin-bottom:8px}
+.modal-box p{font-size:13px;color:var(--gray);margin-bottom:24px;line-height:1.6}
+.modal-input{width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:16px;font-family:inherit;padding:11px 14px;outline:none;margin-bottom:16px;text-align:center}
+.modal-input:focus{border-color:var(--orange)}
+.modal-btn{width:100%;background:var(--orange);border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;font-family:inherit;padding:12px;cursor:pointer;transition:opacity .15s}
+.modal-btn:hover{opacity:.88}
+.modal-note{font-size:11px;color:rgba(255,255,255,0.3);margin-top:12px;font-style:italic}
+
+/* ── SLIDE SYSTEM ── */
+.slide{position:fixed;top:84px;left:0;right:0;bottom:44px;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .35s ease}
+.slide.active{opacity:1;pointer-events:all}
+.otop{height:5px;background:var(--orange);flex-shrink:0}
+
+/* ── BOTTOM NAV ── */
+#nav-bar{position:fixed;bottom:0;left:0;right:0;height:44px;background:rgba(10,28,68,0.97);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:280}
+.nb{background:none;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:5px 18px;border-radius:18px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s}
+.nb:hover{background:var(--orange);border-color:var(--orange)}
+#nav-dots{display:flex;gap:5px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);cursor:pointer;transition:all .2s}
+.dot.cur{background:var(--orange);width:18px;border-radius:4px}
+.dot.done{background:rgba(255,255,255,0.4)}
+
+/* ── SHARED ELEMENTS ── */
+.sh{padding:14px 28px 0;flex-shrink:0}
+.sh-tag{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--orange);margin-bottom:4px}
+.sh h2{font-size:clamp(18px,2.5vw,24px);font-weight:800}
+.sh p{font-size:12px;color:var(--gray);margin-top:3px}
+
+/* ── COVER ── */
+#s-cover{justify-content:center;align-items:center;text-align:center;overflow:hidden;position:relative}
+#s-cover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 25% 50%,rgba(244,121,32,0.07),transparent)}
+.c-inner{position:relative;z-index:1;padding:24px}
+.c-eye{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:16px}
+.c-title{font-size:clamp(38px,6.5vw,66px);font-weight:900;line-height:1.05;margin-bottom:12px}
+.c-title span{color:var(--orange)}
+.c-sub{font-size:15px;color:rgba(255,255,255,0.45);margin-bottom:28px}
+.chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.chip{border:1.5px solid rgba(244,121,32,0.35);color:var(--orange-lt);padding:6px 16px;border-radius:20px;font-size:12px;font-weight:500}
+
+/* ── AGENDA ── */
+.ag-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:14px 28px}
+.ag-card{background:var(--gray-lt);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;display:flex;flex-direction:column;gap:8px}
+.ag-n{font-size:38px;font-weight:900;color:var(--orange);opacity:.22;line-height:1}
+.ag-badge{position:absolute;top:14px;right:14px;background:var(--orange);font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
+.ag-card h3{font-size:14px;font-weight:700}
+.ag-card p{font-size:12px;color:var(--gray);line-height:1.5}
+
+/* ── QUESTION REVEAL ── */
+.q-slide{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:16px 60px;gap:28px;text-align:center}
+.q-text{font-size:clamp(18px,2.8vw,28px);font-weight:700;line-height:1.4;max-width:760px}
+.q-text em{color:var(--orange);font-style:normal}
+.ans{cursor:pointer}
+.ans.hidden .ans-num{filter:blur(20px);opacity:.2}
+.ans.hidden .ans-sub{filter:blur(8px);opacity:.15}
+.ans.hidden .ctr{opacity:.5}
+.ans.revealed .ctr{opacity:0}
+.ans-num{font-size:clamp(64px,11vw,120px);font-weight:900;color:var(--orange);line-height:1;transition:all .4s}
+.ans-sub{font-size:clamp(12px,1.4vw,15px);color:rgba(255,255,255,0.5);margin-top:10px;max-width:600px;line-height:1.6;transition:all .4s}
+.ctr{font-size:12px;color:rgba(255,255,255,0.2);margin-top:12px;font-style:italic;transition:opacity .3s}
+
+/* ── NUM SUMMARY ── */
+.num-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 28px;align-content:center}
+.nc{border-radius:12px;padding:18px 20px;border:1px solid}
+.nc.o{background:rgba(244,121,32,0.09);border-color:rgba(244,121,32,0.25)}
+.nc.r{background:rgba(217,53,53,0.09);border-color:rgba(217,53,53,0.25)}
+.nc .v{font-size:34px;font-weight:900;line-height:1;margin-bottom:5px}
+.nc.o .v{color:var(--orange)}.nc.r .v{color:#E05050}
+.nc .l{font-size:13px;font-weight:600;margin-bottom:4px}
+.nc .d{font-size:11px;color:var(--gray);line-height:1.45}
+
+/* ── FLOW ── */
+.flow-wrap{flex:1;display:flex;flex-direction:column;padding:8px 14px 6px;gap:6px;overflow:hidden}
+.flow-top{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.flow-top h2{font-size:16px;font-weight:800}
+.flow-tip{font-size:11px;color:var(--orange);background:var(--orange-dim);padding:3px 10px;border-radius:10px}
+.flow-canvas{flex:1;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+.lane-row{display:flex;align-items:stretch;flex:1;min-height:0}
+.lane-lbl{width:86px;flex-shrink:0;background:rgba(13,35,86,0.6);border:1px solid var(--border);border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:center;padding:4px 6px;text-align:center}
+.lane-lbl span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.4);line-height:1.4}
+.lane-body{flex:1;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-left:none;border-radius:0 6px 6px 0;display:flex;align-items:center;padding:5px 8px;gap:3px;overflow:hidden}
+.fstep{flex:1;min-width:0;background:rgba(22,46,107,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px 5px;cursor:pointer;transition:all .15s;position:relative;min-height:44px}
+.fstep:hover{border-color:rgba(244,121,32,0.5);background:rgba(244,121,32,0.1)}
+.fstep.clicked{border-color:var(--orange)!important;background:var(--orange-dim)!important}
+.fstep.redline{border-color:rgba(217,53,53,0.4);background:rgba(217,53,53,0.06)}
+.fstep-own{font-size:7.5px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.fstep-lbl{font-size:9.5px;font-weight:500;line-height:1.3;color:rgba(255,255,255,0.88)}
+.fstep-sys{font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px}
+.no-own{position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:7px;font-weight:700;color:#D93535;background:rgba(217,53,53,0.15);border:1px solid rgba(217,53,53,0.3);padding:1px 5px;border-radius:2px}
+.fdiam{flex-shrink:0;width:52px;height:44px;position:relative;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.fdiam-i{width:40px;height:40px;background:rgba(22,46,107,0.7);border:1px solid rgba(255,255,255,0.18);transform:rotate(45deg);transition:all .15s}
+.fdiam:hover .fdiam-i,.fdiam.clicked .fdiam-i{border-color:rgba(244,121,32,0.5);background:rgba(244,121,32,0.1)}
+.fdiam.clicked .fdiam-i{border-color:var(--orange);background:var(--orange-dim)}
+.fdiam-t{position:absolute;font-size:8px;font-weight:600;text-align:center;line-height:1.2;width:44px;color:rgba(255,255,255,0.85)}
+.farr{color:rgba(255,255,255,0.2);font-size:11px;flex-shrink:0;padding:0 1px}
+.flow-footer{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;font-size:9.5px;padding:2px 4px;color:var(--gray)}
+.fl{display:flex;gap:14px}
+.fli{display:flex;align-items:center;gap:4px}
+.fld{width:8px;height:8px;border-radius:2px}
+
+/* ── VOTING ── */
+.vote-wrap{flex:1;display:flex;flex-direction:column;padding:10px 24px;gap:10px}
+.vote-header{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;gap:20px}
+.vote-header-left h2{font-size:20px;font-weight:800}
+.vote-header-left p{font-size:12px;color:var(--gray);margin-top:3px}
+.vote-status-box{text-align:center;flex-shrink:0}
+.vote-pts-lbl{font-size:10px;color:var(--gray);margin-bottom:2px}
+.vote-pts-num{font-size:44px;font-weight:900;color:var(--orange);line-height:1}
+.vote-pts-used{font-size:10px;color:var(--gray);margin-top:2px}
+.vote-reset-btn{font-size:10px;color:rgba(255,255,255,0.25);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit;display:block;margin-top:3px}
+.vote-grid{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:7px;overflow:hidden}
+.vi{background:var(--gray-lt);border:1px solid var(--border);border-radius:9px;padding:9px 12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px}
+.vi:hover:not(.no-pts){background:rgba(244,121,32,0.08);border-color:rgba(244,121,32,0.25)}
+.vi.my-vote{background:rgba(244,121,32,0.12);border-color:rgba(244,121,32,0.5)}
+.vi.no-pts:not(.my-vote){opacity:.45;cursor:default}
+.vi-id{font-size:10px;font-weight:700;color:var(--orange);min-width:48px;flex-shrink:0}
+.vi-body{flex:1;min-width:0}
+.vi-text{font-size:11px;line-height:1.35}
+.vi-bar-wrap{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:5px;overflow:hidden}
+.vi-bar{height:100%;background:var(--orange);border-radius:2px;transition:width .5s ease}
+.vi-total{font-size:15px;font-weight:800;color:var(--orange);min-width:22px;text-align:right;flex-shrink:0}
+.vote-syncing{font-size:10px;color:rgba(255,255,255,0.25);text-align:center;margin-top:4px;flex-shrink:0}
+
+/* ── LIVE RESULTS ── */
+.results-wrap{flex:1;display:flex;flex-direction:column;padding:10px 28px;gap:8px;justify-content:center}
+.ri{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--gray-lt);border:1px solid var(--border);border-radius:10px;transition:all .4s}
+.ri.top{background:rgba(244,121,32,0.1);border-color:rgba(244,121,32,0.35)}
+.ri-num{font-size:26px;font-weight:900;color:var(--orange);min-width:30px;text-align:center;transition:all .3s}
+.ri-body{flex:1}
+.ri-id{font-size:10px;font-weight:700;color:var(--orange);margin-bottom:2px}
+.ri-lbl{font-size:12px;font-weight:500}
+.ri-bw{height:4px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:5px}
+.ri-bf{height:100%;background:var(--orange);border-radius:2px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.4);border-radius:10px;padding:3px 10px;font-size:10px;font-weight:600;color:#2ecc71;margin-left:10px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#2ecc71;animation:pulse 1s infinite}
+
+/* ── FEEDBACK ── */
+.fb-wrap{flex:1;display:flex;gap:12px;padding:10px 24px 12px;overflow:hidden}
+.fb-col{flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.fb-col-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);padding-bottom:6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.fb-section{background:var(--gray-lt);border:1px solid var(--border);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:7px;flex:1}
+.fb-q{font-size:12px;font-weight:600;line-height:1.4}
+.fb-rating{display:flex;gap:5px}
+.fbstar{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;transition:all .15s;color:rgba(255,255,255,0.2)}
+.fbstar:hover,.fbstar.on{background:rgba(244,121,32,0.15);border-color:var(--orange);color:var(--orange)}
+.fb-check-row{display:flex;flex-direction:column;gap:4px}
+.fbc{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;color:rgba(255,255,255,0.6);padding:3px 5px;border-radius:5px;transition:background .12s}
+.fbc:hover{background:rgba(255,255,255,0.04)}
+.fbc input[type=checkbox]{accent-color:var(--orange);width:12px;height:12px;cursor:pointer}
+.fbc.sel{color:#fff}
+.fbta{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:11px;resize:none;font-family:inherit;outline:none;line-height:1.5;width:100%;padding:7px 9px;min-height:48px}
+.fbta::placeholder{color:rgba(255,255,255,0.2);font-style:italic}
+.fbta:focus{border-color:rgba(244,121,32,0.4)}
+
+/* ── FACILITATOR PANEL ── */
+#fac-panel{position:fixed;bottom:44px;right:0;background:rgba(10,28,68,0.98);border:1px solid var(--border);border-radius:8px 0 0 0;padding:10px 14px;z-index:400;font-size:11px;display:none}
+#fac-panel.show{display:block}
+.fac-title{color:var(--orange);font-weight:700;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.fac-btn{display:block;width:100%;background:rgba(217,53,53,0.15);border:1px solid rgba(217,53,53,0.4);color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:11px;font-family:inherit;margin-top:6px;text-align:left;transition:all .15s}
+.fac-btn:hover{background:rgba(217,53,53,0.3)}
+.fac-btn.safe{background:rgba(244,121,32,0.1);border-color:rgba(244,121,32,0.3)}
+.fac-btn.safe:hover{background:rgba(244,121,32,0.2)}
+.fac-toggle{position:fixed;bottom:44px;right:0;background:rgba(10,28,68,0.97);border:1px solid var(--border);border-radius:8px 0 0 0;padding:5px 10px;z-index:399;font-size:10px;cursor:pointer;color:var(--gray)}
+</style>
+</head>
+<body>
+
+<!-- USER ID MODAL -->
+<div id="id-modal">
+  <div class="modal-box">
+    <h2>Bem-vindo ao Workshop</h2>
+    <p>Digite seu nome ou iniciais para identificar sua votação.<br>Cada participante tem <strong style="color:var(--orange)">3 pontos</strong> para distribuir entre as causas raízes.</p>
+    <input class="modal-input" id="uid-input" type="text" placeholder="Ex: Juliana, João, Thabatta..." maxlength="30" autofocus>
+    <button class="modal-btn" onclick="setUser()">Entrar no workshop →</button>
+    <div class="modal-note">Seu nome aparecerá apenas para o facilitador</div>
+  </div>
+</div>
+
+<!-- LOGO BAR -->
+<div id="logo-bar">
+  <div class="logo-title">MONODA × <span>SBM Offshore</span></div>
+  <div class="logo-meta" id="user-label">Workshop · Spares & Consumables — Structural Approach</div>
+</div>
+
+<!-- TIMER BAR -->
+<div id="timer-bar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="t-pulse"></div>
+    <span class="t-section" id="t-section">Início</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--gray)">tempo total</span>
+    <span class="t-total" id="t-total">60:00</span>
+  </div>
+</div>
+
+<!-- ══════════════════ SLIDES ══════════════════ -->
+
+<!-- 0: COVER -->
+<div class="slide active" id="s-cover" data-label="Abertura" data-min="3">
+  <div class="otop"></div>
+  <div class="c-inner" style="margin:auto;text-align:center;padding:24px">
+    <div class="c-eye">Workshop</div>
+    <h1 class="c-title">Spares &amp; Consumables<br><span>Structural Approach</span></h1>
+    <p class="c-sub" style="max-width:500px;margin:0 auto 28px">Da dor ao diagnóstico — 60 minutos que definem o próximo passo</p>
+    <div class="chips">
+      <div class="chip">709 pain points mapeados</div>
+      <div class="chip">← → para navegar</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1: AGENDA -->
+<div class="slide" data-label="Agenda" data-min="2">
+  <div class="otop"></div>
+  <div class="sh"><div class="sh-tag">Hoje</div><h2>60 minutos. 4 momentos.</h2></div>
+  <div class="ag-grid">
+    <div class="ag-card"><div class="ag-n">01</div><div class="ag-badge">10 min</div><h3>O choque dos números</h3><p>Dados reais do inventário, OSs e compras — revelados um a um. Com estimativa de vocês antes de cada reveal.</p></div>
+    <div class="ag-card"><div class="ag-n">02</div><div class="ag-badge">15 min</div><h3>Onde o fluxo quebra?</h3><p>Vocês apontam onde sentem dor no processo AS-IS de Spares & Consumables — cada um no próprio dispositivo.</p></div>
+    <div class="ag-card"><div class="ag-n">03</div><div class="ag-badge">20 min</div><h3>Votação + discussão</h3><p>14 causas raízes, 3 pontos por pessoa. Resultado ao vivo. Depois: deep dive na prioridade #1 do grupo.</p></div>
+    <div class="ag-card"><div class="ag-n">04</div><div class="ag-badge">15 min</div><h3>Feedback e calibração</h3><p>Vocês avaliam se os fluxos e causas raízes refletem a realidade. O que está certo, o que falta, o que corrigir.</p></div>
+  </div>
+</div>
+
+<!-- 2–7: QUESTION SLIDES -->
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Qual é o valor total do inventário de Spares &amp; Consumables<br>da SBM no Brasil <em>hoje?</em></div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">R$ XX M</div><div class="ans-sub">XX sites · XX linhas de inventário · XX FPSOs · em validação</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Desse inventário, qual % está<br><em>bloqueado, sem uso, estagnado ou sem classificação?</em></div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">XX%</div><div class="ans-sub">R$ XX M parado — em validação com dados de inventário</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Qual % das Ordens de Serviço de<br><em>Manutenção Preventiva</em> não tem material associado no IFS?</div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">XX%</div><div class="ans-sub">Em validação — estimativa qualitativa das entrevistas apontava ~70%</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Quantos itens estão formalmente marcados para descarte?<br><em>vs o volume classificado como "Not Ready to Use"</em></div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">XX itens</div><div class="ans-sub">Divergência massiva entre itens formalmente marcados e volume elegível — em validação</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Qual é a <em>idade média</em> das Ordens de Serviço<br>atualmente em aberto?</div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">XX anos</div><div class="ans-sub">XX% paradas em UNDERPREPARATION · XX% das OSs são reativas — em validação</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<div class="slide" data-label="Choque dos números" data-min="10">
+  <div class="otop"></div>
+  <div class="q-slide">
+    <div class="q-text">Quantos part numbers têm estoque em um FPSO enquanto<br><em>outro está comprando o mesmo item no mercado?</em></div>
+    <div class="ans hidden" onclick="reveal(this)"><div class="ans-num">XX</div><div class="ans-sub">R$ XX M em compras externas potencialmente evitáveis — em validação</div><div class="ctr">clique para revelar</div></div>
+  </div>
+</div>
+
+<!-- 8: SUMMARY -->
+<div class="slide" data-label="Choque dos números — resumo" data-min="10">
+  <div class="otop"></div>
+  <div class="sh"><div class="sh-tag">Seção 1 — Resumo</div><h2>O diagnóstico em 6 dimensões</h2><p>Números em validação — a confirmar até quarta-feira</p></div>
+  <div class="num-grid">
+    <div class="nc o"><div class="v">R$ XX M</div><div class="l">Inventário total</div><div class="d">XX sites · XX FPSOs · snapshot março 2026</div></div>
+    <div class="nc r"><div class="v">XX%</div><div class="l">Parado ou inútil</div><div class="d">Bloqueado, sem uso, estagnado ou sem classificação</div></div>
+    <div class="nc r"><div class="v">XX%</div><div class="l">PMs sem material no IFS</div><div class="d">Estimativa qualitativa: ~70% — quantitativo em validação</div></div>
+    <div class="nc r"><div class="v">XX itens</div><div class="l">Formalmente para descarte</div><div class="d">vs R$ XX M classificados como "Not Ready to Use"</div></div>
+    <div class="nc o"><div class="v">XX anos</div><div class="l">Idade média das OSs abertas</div><div class="d">XX% paradas em UNDERPREPARATION · XX% reativas</div></div>
+    <div class="nc o"><div class="v">XX</div><div class="l">Oportunidades intercompany</div><div class="d">R$ XX M em compras externas potencialmente evitáveis</div></div>
+  </div>
+</div>
+
+<!-- 9: FLUXO AS-IS -->
+<div class="slide" data-label="Atividade 1 — Onde o fluxo quebra?" data-min="15">
+  <div class="otop"></div>
+  <div class="flow-wrap">
+    <div class="flow-top">
+      <h2>Spares &amp; Consumables — Fluxo AS-IS</h2>
+      <div class="flow-tip">Clique nos passos onde você sente dor ou faz workaround</div>
+      <div style="margin-left:auto;font-size:11px;color:var(--gray)">Seus cliques: <span id="flow-clicks" style="color:var(--orange);font-weight:700">0</span></div>
+    </div>
+    <div class="flow-canvas">
+      <div class="lane-row">
+        <div class="lane-lbl"><span>Work Order Flow</span></div>
+        <div class="lane-body">
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Global Plan. &amp; Maint.</div><div class="fstep-lbl">Develop Maintenance Strategy Plan</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Global Plan. &amp; Maint.</div><div class="fstep-lbl">Forecast PM Scopes</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Maint. &amp; Ops Teams</div><div class="fstep-lbl">Identify Future Needs / Create WO</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Maint. &amp; Ops Teams</div><div class="fstep-lbl">Prioritize OS Target planned &amp; unplanned</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Maint. &amp; Ops Teams</div><div class="fstep-lbl">Perform Technical Plan Review</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fdiam redline" onclick="fs(this)"><div class="fdiam-i"></div><div class="fdiam-t">Material in Stock?</div></div>
+          <div class="farr">→</div>
+          <div class="fdiam" onclick="fs(this)"><div class="fdiam-i"></div><div class="fdiam-t">Intercompany needed?</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Planning</div><div class="fstep-lbl">Reserve Materials</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Planning</div><div class="fstep-lbl">Schedule</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Planning &amp; Ops</div><div class="fstep-lbl">Start Service Execution</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Ops / Offshore</div><div class="fstep-lbl">Finish Service Execution</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fdiam redline" onclick="fs(this)"><div class="fdiam-i"></div><div class="fdiam-t">Material left to return?</div><div class="no-own">sem dono</div></div>
+        </div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-lbl"><span>Procure-to-Pay</span></div>
+        <div class="lane-body">
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Requester</div><div class="fstep-lbl">Create Material Purchase Req. (PR)</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">SC Buyer</div><div class="fstep-lbl">Source Supplier &amp; Open PO</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">SC Buyer</div><div class="fstep-lbl">Mgmt of Intercompany / Intrafleet</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">PO Approver</div><div class="fstep-lbl">Approve POs</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">SC Buyer</div><div class="fstep-lbl">Send Approved PO to Supplier</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse Team</div><div class="fstep-lbl">Emit Goods Receipt (GR)</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Accounting</div><div class="fstep-lbl">Generate Invoice Receipt</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Accounting</div><div class="fstep-lbl">Reconcile PO, GR and Invoice</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Accounting</div><div class="fstep-lbl">Pay Supplier</div></div>
+        </div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-lbl"><span>Materials Flow</span></div>
+        <div class="lane-body">
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">MUD / AIR IFS</div><div class="fstep-lbl">Ensure Data Governance (BOM, Catalogue)</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Ops Materials</div><div class="fstep-lbl">Define Min/Max Inventory Policy</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Parameters &amp; Materials</div><div class="fstep-lbl">Ensure Min/Max Policy Adherence</div><div class="fstep-sys">IFS</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse / ARM</div><div class="fstep-lbl">Manage Stock Accuracy</div><div class="fstep-sys">Maya</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse Team</div><div class="fstep-lbl">Pre-Analysis of Delivery Documentation</div></div>
+          <div class="farr">→</div>
+          <div class="fdiam" onclick="fs(this)"><div class="fdiam-i"></div><div class="fdiam-t">Delivery compliant?</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse Team</div><div class="fstep-lbl">Receive &amp; Inspect Onshore</div><div class="fstep-sys">IFS / Maya</div></div>
+          <div class="farr">→</div>
+          <div class="fdiam" onclick="fs(this)"><div class="fdiam-i"></div><div class="fdiam-t">Transfer to FPSO?</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse Team</div><div class="fstep-lbl">Put-away &amp; Store / Preserve Onshore</div><div class="fstep-sys">IFS / Maya</div></div>
+          <div class="farr">→</div>
+          <div class="fstep" onclick="fs(this)"><div class="fstep-own">Warehouse Team</div><div class="fstep-lbl">Transfer to FPSO</div><div class="fstep-sys">IFS / Maya</div></div>
+          <div class="farr">→</div>
+          <div class="fstep redline" onclick="fs(this)"><div class="fstep-own">—</div><div class="fstep-lbl">Receive &amp; Assess Backload / Scrap / Repair</div><div class="fstep-sys">IFS / Maya</div><div class="no-own">sem dono definido</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="flow-footer">
+      <div class="fl">
+        <div class="fli"><div class="fld" style="background:rgba(217,53,53,0.5);border:1px solid rgba(217,53,53,0.7)"></div>Sem dono definido</div>
+        <div class="fli"><div class="fld" style="background:rgba(244,121,32,0.4);border:1px solid var(--orange)"></div>Você clicou aqui</div>
+        <div class="fli">Diamante = decisão</div>
+      </div>
+      <div>Owners conforme fluxo AS-IS — em validação</div>
+    </div>
+  </div>
+</div>
+
+<!-- 10: VOTAÇÃO FIREBASE -->
+<div class="slide" data-label="Atividade 2 — Votação em tempo real" data-min="20">
+  <div class="otop"></div>
+  <div class="vote-wrap">
+    <div class="vote-header">
+      <div class="vote-header-left">
+        <div class="sh-tag" style="margin:0 0 3px">Atividade 2 · votação ao vivo</div>
+        <h2>Qual causa raíz você priorizaria?</h2>
+        <p>Distribua seus 3 pontos. Pode concentrar tudo numa ou dividir. Resultados visíveis para todos em tempo real.</p>
+      </div>
+      <div class="vote-status-box">
+        <div class="vote-pts-lbl">Seus pontos restantes</div>
+        <div class="vote-pts-num" id="pts-left">3</div>
+        <div class="vote-pts-used" id="pts-used"></div>
+        <button class="vote-reset-btn" onclick="resetMyVotes()">↺ resetar meus votos</button>
+      </div>
+    </div>
+    <div class="vote-grid" id="vote-grid"></div>
+    <div class="vote-syncing" id="vote-syncing">Conectando ao servidor de votação...</div>
+  </div>
+</div>
+
+<!-- 11: RESULTADOS AO VIVO -->
+<div class="slide" data-label="Resultados ao vivo" data-min="20">
+  <div class="otop"></div>
+  <div class="sh">
+    <div class="sh-tag">Resultado do grupo <span class="live-badge"><span class="live-dot"></span>ao vivo</span></div>
+    <h2>As prioridades que emergiram</h2>
+    <p>Atualização em tempo real — cada voto reflete instantaneamente</p>
+  </div>
+  <div class="results-wrap" id="results-wrap"></div>
+</div>
+
+<!-- 12: FEEDBACK -->
+<div class="slide" data-label="Atividade 3 — Feedback dos fluxos e causas raízes" data-min="15">
+  <div class="otop"></div>
+  <div class="sh" style="padding-bottom:8px"><div class="sh-tag">Atividade 3</div><h2>O que está certo? O que falta? O que corrigir?</h2><p>Ajude-nos a calibrar os fluxos e causas raízes antes de avançar para o Future State.</p></div>
+  <div class="fb-wrap">
+    <div class="fb-col">
+      <div class="fb-col-title">Sobre os fluxos AS-IS</div>
+      <div class="fb-section">
+        <div class="fb-q">O fluxo representa bem a realidade operacional?</div>
+        <div class="fb-rating" id="r-flow">
+          <div class="fbstar" onclick="rate('r-flow',1)">1</div><div class="fbstar" onclick="rate('r-flow',2)">2</div><div class="fbstar" onclick="rate('r-flow',3)">3</div><div class="fbstar" onclick="rate('r-flow',4)">4</div><div class="fbstar" onclick="rate('r-flow',5)">5</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--gray)"><span>Muito diferente da realidade</span><span>Representa bem</span></div>
+      </div>
+      <div class="fb-section" style="flex:2">
+        <div class="fb-q">Quais etapas estão incorretas ou faltando?</div>
+        <div class="fb-check-row">
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Work Order Flow — falta etapa de material check antes de PREP</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Procure-to-Pay — aprovação tem mais níveis do que o mostrado</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Materials Flow — processo de backload está simplificado demais</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Owners estão incorretos ou desatualizados</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Fluxo de intercompany não está representado</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Processo offshore (onboard) está faltando</label>
+        </div>
+        <textarea class="fbta" placeholder="Outras observações sobre os fluxos..." rows="3"></textarea>
+      </div>
+    </div>
+    <div class="fb-col">
+      <div class="fb-col-title">Sobre os pain points e causas raízes</div>
+      <div class="fb-section">
+        <div class="fb-q">Os pain points refletem os problemas que você vive no dia a dia?</div>
+        <div class="fb-rating" id="r-pp">
+          <div class="fbstar" onclick="rate('r-pp',1)">1</div><div class="fbstar" onclick="rate('r-pp',2)">2</div><div class="fbstar" onclick="rate('r-pp',3)">3</div><div class="fbstar" onclick="rate('r-pp',4)">4</div><div class="fbstar" onclick="rate('r-pp',5)">5</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--gray)"><span>Não reconheço</span><span>Reconheço totalmente</span></div>
+      </div>
+      <div class="fb-section">
+        <div class="fb-q">Alguma causa raíz te surpreendeu?</div>
+        <textarea class="fbta" placeholder="Ex: RC04 faz sentido / RC09 está subestimado / RC01 não é problema aqui..." rows="3"></textarea>
+      </div>
+      <div class="fb-section" style="flex:1.5">
+        <div class="fb-q">O que está faltando no diagnóstico?</div>
+        <div class="fb-check-row">
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Dimensão de custo não está clara o suficiente</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Impacto operacional / risco de parada não endereçado</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Perspectiva offshore sub-representada</label>
+          <label class="fbc"><input type="checkbox" onchange="tog(this)"> Contexto regulatório (ANP / Repetro) falta mais peso</label>
+        </div>
+        <textarea class="fbta" placeholder="Outros gaps ou contexto que deve ser considerado..." rows="2"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV BAR -->
+<div id="nav-bar">
+  <button class="nb" onclick="go(cur-1)">← Anterior</button>
+  <div id="nav-dots"></div>
+  <span id="nav-counter" style="font-size:11px;color:var(--gray);min-width:50px;text-align:center"></span>
+  <button class="nb" onclick="go(cur+1)">Próximo →</button>
+</div>
+
+<!-- FACILITADOR TOGGLE -->
+<div class="fac-toggle" onclick="toggleFac()" title="Painel do facilitador">⚙ fac</div>
+<div id="fac-panel">
+  <div class="fac-title">Painel do facilitador</div>
+  <div style="font-size:10px;color:var(--gray);margin-bottom:6px">Total de votos: <span id="fac-total" style="color:var(--orange);font-weight:700">0</span></div>
+  <button class="fac-btn" onclick="if(confirm('Resetar TODOS os votos de todos os participantes?'))fbReset()">🗑 Resetar todos os votos</button>
+  <button class="fac-btn safe" onclick="go(10)">→ Ir para resultados ao vivo</button>
+  <button class="fac-btn safe" onclick="go(9)">→ Ir para fluxo</button>
+</div>
+
+<script>
+// ── ROOT CAUSES ──────────────────────────────────────────
+const RCS = [
+  {id:"RC11", label:"Incentivos financeiros desalinhados — estoque sem pressão financeira para ser gerenciado"},
+  {id:"RC12", label:"Accountability de processos ausente — RACIs desconhecidos, KPIs que incentivam comportamentos errados"},
+  {id:"RC13", label:"Cultura de firefighting e conhecimento tácito concentrado em pessoas"},
+  {id:"RC01", label:"Sem governança de dados — catálogo com centenas de milhares de códigos e duplicatas"},
+  {id:"RC02", label:"IFS implantado sem preparo — sem localizações, sem P2P, sem sugestões confiáveis de reposição"},
+  {id:"RC03", label:"IFS e Maya nunca integrados — divergência de estoque entre sistemas"},
+  {id:"RC04", label:"Gestão de estoque sem dono — sem min/max, sem política, sem função dedicada"},
+  {id:"RC05", label:"Manutenção e suprimentos em silos — sem horizonte de demanda compartilhado nem previsão"},
+  {id:"RC06a", label:"Governança de demanda inexistente — 550+ pessoas abrindo PR sem controle de estoque ou budget"},
+  {id:"RC06b", label:"Processo de compras manual e inflexível — >80% urgente, ~40% cotações canceladas sem PO"},
+  {id:"RC07", label:"Gestão de fornecedores reativa — dependência OEM, sem estratégia de categorias de alto gasto"},
+  {id:"RC08", label:"Warehouse subgovernado — layout ad hoc, ARM sem visibilidade, scrap sem RACI ou SLA"},
+  {id:"RC09", label:"Sem supply chain em frota — intercompany em email, surpluses e shortages simultâneos por FPSO"},
+  {id:"RC10", label:"Conformidade fiscal reativa — NFs emitidas por logística sem expertise fiscal, Repetro sem controle"},
+];
+
+// ── STATE ────────────────────────────────────────────────
+let cur = 0;
+let userId = null;
+let myVotes = {};  // rcId: true/false
+let allVotes = {}; // userId: {rcId: true}
+let fbReady = false;
+let flowClicks = 0;
+let elapsed = 0;
+
+const slides = document.querySelectorAll('.slide');
+const N = slides.length;
+
+// ── USER SETUP ───────────────────────────────────────────
+function setUser() {
+  const v = document.getElementById('uid-input').value.trim();
+  if (!v) return;
+  userId = v + '_' + Math.random().toString(36).slice(2,6);
+  document.getElementById('id-modal').classList.add('hidden');
+  document.getElementById('user-label').textContent =
+    'Olá, ' + v + ' · Spares & Consumables Workshop';
+  buildVotes();
+}
+document.getElementById('uid-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') setUser();
+});
+
+// ── FIREBASE SYNC ────────────────────────────────────────
+window._onVotesUpdate = function(data) {
+  allVotes = data || {};
+  // Rebuild myVotes from firebase
+  myVotes = allVotes[userId] || {};
+  const usedPts = Object.values(myVotes).filter(Boolean).length;
+  buildVotes(usedPts);
+  buildResults();
+  updateFacPanel();
+  const sync = document.getElementById('vote-syncing');
+  if (sync) sync.textContent = '● sincronizado com ' + Object.keys(allVotes).length + ' participante(s)';
+};
+
+document.addEventListener('fbReady', () => {
+  fbReady = true;
+  const sync = document.getElementById('vote-syncing');
+  if (sync) sync.textContent = '● conectado — aguardando votos';
+});
+
+// ── VOTING ───────────────────────────────────────────────
+async function castVote(rcId) {
+  if (!userId) return;
+  const used = Object.values(myVotes).filter(Boolean).length;
+  if (myVotes[rcId]) {
+    myVotes[rcId] = false;
+    if (fbReady) await window.fbUnvote(rcId, userId);
+  } else {
+    if (used >= 3) return;
+    myVotes[rcId] = true;
+    if (fbReady) await window.fbVote(rcId, userId);
+  }
+}
+
+async function resetMyVotes() {
+  if (!userId) return;
+  myVotes = {};
+  for (const rc of RCS) {
+    if (fbReady) await window.fbUnvote(rc.id, userId);
+  }
+}
+
+function countVotesFor(rcId) {
+  let n = 0;
+  for (const uid of Object.keys(allVotes)) {
+    if (allVotes[uid]?.[rcId]) n++;
+  }
+  return n;
+}
+
+function totalAllVotes() {
+  let n = 0;
+  for (const uid of Object.keys(allVotes)) {
+    n += Object.values(allVotes[uid] || {}).filter(Boolean).length;
+  }
+  return n;
+}
+
+function buildVotes(usedPts) {
+  const grid = document.getElementById('vote-grid');
+  if (!grid) return;
+  const used = usedPts !== undefined ? usedPts :
+    Object.values(myVotes).filter(Boolean).length;
+  const pts = 3 - used;
+  const maxTotal = Math.max(...RCS.map(r => countVotesFor(r.id)), 1);
+
+  grid.innerHTML = '';
+  RCS.forEach(rc => {
+    const isMine = myVotes[rc.id];
+    const total = countVotesFor(rc.id);
+    const el = document.createElement('div');
+    el.className = 'vi' + (isMine ? ' my-vote' : '') + (pts === 0 && !isMine ? ' no-pts' : '');
+    el.innerHTML = `
+      <div class="vi-id">${rc.id}</div>
+      <div class="vi-body">
+        <div class="vi-text">${rc.label}</div>
+        <div class="vi-bar-wrap"><div class="vi-bar" style="width:${(total/maxTotal)*100}%"></div></div>
+      </div>
+      <div class="vi-total">${total || ''}</div>
+    `;
+    el.onclick = () => castVote(rc.id);
+    grid.appendChild(el);
+  });
+
+  const pl = document.getElementById('pts-left');
+  if (pl) pl.textContent = pts;
+  const pu = document.getElementById('pts-used');
+  if (pu) pu.textContent = used > 0 ? used + '/3 usados' : '';
+}
+
+function buildResults() {
+  const wrap = document.getElementById('results-wrap');
+  if (!wrap) return;
+  const sorted = [...RCS].sort((a, b) => countVotesFor(b.id) - countVotesFor(a.id));
+  const maxV = Math.max(...sorted.map(r => countVotesFor(r.id)), 1);
+  const hasVotes = sorted.some(r => countVotesFor(r.id) > 0);
+  if (!hasVotes) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:14px;margin:auto;padding:40px">Aguardando votos... Os resultados aparecem aqui em tempo real.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  sorted.slice(0, 6).forEach((rc, i) => {
+    const v = countVotesFor(rc.id);
+    if (v === 0 && i >= 3) return;
+    const div = document.createElement('div');
+    div.className = 'ri' + (i === 0 ? ' top' : '');
+    const label = i === 0 ? ' · PRIORIDADE #1' : i === 1 ? ' · PRIORIDADE #2' : i === 2 ? ' · PRIORIDADE #3' : '';
+    div.innerHTML = `
+      <div class="ri-num" style="font-size:${i===0?'32px':'22px'}">${v}</div>
+      <div class="ri-body">
+        <div class="ri-id">${rc.id}${label}</div>
+        <div class="ri-lbl" style="font-size:${i===0?'13px':'12px'}">${rc.label}</div>
+        <div class="ri-bw"><div class="ri-bf" style="width:${(v/maxV)*100}%"></div></div>
+      </div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+function updateFacPanel() {
+  const el = document.getElementById('fac-total');
+  if (el) el.textContent = totalAllVotes() + ' (' + Object.keys(allVotes).length + ' participantes)';
+}
+
+// ── NAVIGATION ───────────────────────────────────────────
+function go(n) {
+  n = Math.max(0, Math.min(n, N - 1));
+  slides[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  updateNav();
+  updateTimerLabel();
+  if (slides[cur].querySelector('#results-wrap')) buildResults();
+}
+function updateNav() {
+  const el = document.getElementById('nav-dots');
+  el.innerHTML = '';
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === cur ? ' cur' : i < cur ? ' done' : '');
+    d.onclick = () => go(i);
+    el.appendChild(d);
+  });
+  document.getElementById('nav-counter').textContent = (cur + 1) + ' / ' + N;
+}
+document.addEventListener('keydown', e => {
+  if (['TEXTAREA', 'INPUT'].includes(e.target.tagName)) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+});
+
+// ── TIMER ────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+function updateTimerLabel() {
+  const s = slides[cur];
+  const lbl = (s.dataset.label || '') + (s.dataset.min ? ' · ' + s.dataset.min + ' min' : '');
+  document.getElementById('t-section').textContent = lbl;
+}
+setInterval(() => {
+  elapsed++;
+  const rem = Math.max(0, 3600 - elapsed);
+  const el = document.getElementById('t-total');
+  el.textContent = pad(Math.floor(rem / 60)) + ':' + pad(rem % 60);
+  if (rem <= 300) el.classList.add('urgent');
+}, 1000);
+
+// ── MISC ─────────────────────────────────────────────────
+function reveal(el) { el.classList.remove('hidden'); el.classList.add('revealed'); }
+
+let _fc = 0;
+function fs(el) {
+  el.classList.toggle('clicked');
+  _fc += el.classList.contains('clicked') ? 1 : -1;
+  const c = document.getElementById('flow-clicks');
+  if (c) c.textContent = Math.max(0, _fc);
+}
+
+function rate(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.querySelectorAll('.fbstar').forEach((s, i) => s.classList.toggle('on', i < val));
+}
+function tog(cb) { cb.closest('.fbc').classList.toggle('sel', cb.checked); }
+
+let facOpen = false;
+function toggleFac() {
+  facOpen = !facOpen;
+  document.getElementById('fac-panel').classList.toggle('show', facOpen);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+updateNav();
+updateTimerLabel();
+</script>
+</body>
+</html>
